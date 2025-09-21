@@ -1,299 +1,188 @@
 package main
 
 import (
-    "bytes"
-    "encoding/json"
-    "fmt"
-    "io/ioutil"
-    "log"
-    "net/http"
-    "os"
-    "time"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"os"
+	"time"
 
-    "github.com/joho/godotenv"
+	"github.com/joho/godotenv"
 )
 
 const API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 type Message struct {
-    Role    string `json:"role"`
-    Content string `json:"content"`
+	Role    string `json:"role"`
+	Content string `json:"content"`
 }
 
-type ChatRequest struct {
-    Message string `json:"message"`
-}
-
-type ChatResponse struct {
-    Response string `json:"response"`
-    Error    string `json:"error,omitempty"`
-    Time     string `json:"time"`
-}
-
-type OpenRouterRequest struct {
-    Model    string    `json:"model"`
-    Messages []Message `json:"messages"`
+type Request struct {
+	Model    string    `json:"model"`
+	Messages []Message `json:"messages"`
 }
 
 type Choice struct {
-    Message Message `json:"message"`
+	Message Message `json:"message"`
 }
 
-type OpenRouterResponse struct {
-    Choices []Choice `json:"choices"`
+type Response struct {
+	Choices []Choice `json:"choices"`
 }
 
-// Store conversation history (in production, use a database)
-var conversationHistory = []Message{
-    {Role: "system", Content: "You are a helpful assistant."},
-}
+// CORS middleware
+func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Set CORS headers
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
 
-var apiKey string
+		// Handle preflight OPTIONS request
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
 
-// Middleware to log requests like Flask
-func loggingMiddleware(next http.HandlerFunc) http.HandlerFunc {
-    return func(w http.ResponseWriter, r *http.Request) {
-        start := time.Now()
-        
-        // Create a custom response writer to capture status code
-        ww := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
-        
-        // Log the incoming request
-        log.Printf("[%s] %s %s %s", 
-            start.Format("2006-01-02 15:04:05"), 
-            r.Method, 
-            r.RequestURI, 
-            r.RemoteAddr)
-        
-        // Call the next handler
-        next.ServeHTTP(ww, r)
-        
-        // Log the response
-        duration := time.Since(start)
-        log.Printf("[%s] %s %s - %d - %v", 
-            time.Now().Format("2006-01-02 15:04:05"),
-            r.Method, 
-            r.RequestURI, 
-            ww.statusCode,
-            duration)
-    }
-}
-
-// Custom response writer to capture status code
-type responseWriter struct {
-    http.ResponseWriter
-    statusCode int
-}
-
-func (rw *responseWriter) WriteHeader(code int) {
-    rw.statusCode = code
-    rw.ResponseWriter.WriteHeader(code)
-}
-
-func enableCORS(w http.ResponseWriter) {
-    w.Header().Set("Access-Control-Allow-Origin", "*")
-    w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-    w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		// Call the next handler
+		next.ServeHTTP(w, r)
+	}
 }
 
 func chatHandler(w http.ResponseWriter, r *http.Request) {
-    enableCORS(w)
+	log.Printf("Received %s request to %s", r.Method, r.URL.Path)
 
-    if r.Method == "OPTIONS" {
-        w.WriteHeader(http.StatusOK)
-        return
-    }
+	if r.Method != "POST" {
+		http.Error(w, "Only POST allowed", http.StatusMethodNotAllowed)
+		return
+	}
 
-    if r.Method != "POST" {
-        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-        return
-    }
+	// Parse user input
+	var input struct {
+		Prompt string `json:"prompt"`
+	}
+	err := json.NewDecoder(r.Body).Decode(&input)
+	if err != nil {
+		log.Printf("Error decoding JSON: %v", err)
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
 
-    var chatReq ChatRequest
-    err := json.NewDecoder(r.Body).Decode(&chatReq)
-    if err != nil {
-        w.WriteHeader(http.StatusBadRequest)
-        response := ChatResponse{Error: "Invalid JSON"}
-        json.NewEncoder(w).Encode(response)
-        return
-    }
+	log.Printf("User prompt: %s", input.Prompt)
 
-    if chatReq.Message == "" {
-        w.WriteHeader(http.StatusBadRequest)
-        response := ChatResponse{Error: "Message cannot be empty"}
-        json.NewEncoder(w).Encode(response)
-        return
-    }
+	apiKey := os.Getenv("OPENROUTER_API_KEY")
+	if apiKey == "" {
+		log.Printf("API key not set")
+		http.Error(w, "API key not set", http.StatusInternalServerError)
+		return
+	}
 
-    // Log the user message
-    log.Printf("User message: %s", chatReq.Message)
+	reqBody := Request{
+		Model: "x-ai/grok-4-fast:free",
+		Messages: []Message{
+			{Role: "system", Content: "You are a helpful assistant."},
+			{Role: "user", Content: input.Prompt},
+		},
+	}
 
-    // Add user message to conversation history
-    conversationHistory = append(conversationHistory, Message{
-        Role:    "user",
-        Content: chatReq.Message,
-    })
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		log.Printf("Error marshaling request: %v", err)
+		http.Error(w, "Error preparing request", http.StatusInternalServerError)
+		return
+	}
 
-    // Prepare request to OpenRouter
-    reqBody := OpenRouterRequest{
-        Model:    "deepseek/deepseek-chat-v3.1:free",
-        Messages: conversationHistory,
-    }
+	start := time.Now()
 
-    jsonData, err := json.Marshal(reqBody)
-    if err != nil {
-        w.WriteHeader(http.StatusInternalServerError)
-        response := ChatResponse{Error: "Failed to prepare request"}
-        json.NewEncoder(w).Encode(response)
-        return
-    }
+	req, err := http.NewRequest("POST", API_URL, bytes.NewBuffer(jsonData))
+	if err != nil {
+		log.Printf("Error creating request: %v", err)
+		http.Error(w, "Error creating request", http.StatusInternalServerError)
+		return
+	}
 
-    // Measure response time
-    start := time.Now()
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("Content-Type", "application/json")
 
-    // Log OpenRouter API request
-    log.Printf("Making request to OpenRouter API...")
+	client := &http.Client{Timeout: 30 * time.Second}
+	res, err := client.Do(req)
+	if err != nil {
+		log.Printf("Error making request to OpenRouter: %v", err)
+		http.Error(w, "Error contacting AI service", http.StatusInternalServerError)
+		return
+	}
+	defer res.Body.Close()
 
-    // Make request to OpenRouter
-    req, err := http.NewRequest("POST", API_URL, bytes.NewBuffer(jsonData))
-    if err != nil {
-        w.WriteHeader(http.StatusInternalServerError)
-        response := ChatResponse{Error: "Failed to create request"}
-        json.NewEncoder(w).Encode(response)
-        return
-    }
+	log.Printf("OpenRouter response status: %d", res.StatusCode)
 
-    req.Header.Set("Authorization", "Bearer "+apiKey)
-    req.Header.Set("Content-Type", "application/json")
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		log.Printf("Error reading response: %v", err)
+		http.Error(w, "Error reading response", http.StatusInternalServerError)
+		return
+	}
 
-    client := &http.Client{Timeout: 30 * time.Second}
-    res, err := client.Do(req)
-    if err != nil {
-        log.Printf("OpenRouter API error: %v", err)
-        w.WriteHeader(http.StatusBadGateway)
-        response := ChatResponse{Error: "Failed to get response from AI"}
-        json.NewEncoder(w).Encode(response)
-        return
-    }
-    defer res.Body.Close()
+	elapsed := time.Since(start)
 
-    // Log OpenRouter API response status
-    log.Printf("OpenRouter API response: %d %s", res.StatusCode, res.Status)
+	if res.StatusCode != http.StatusOK {
+		log.Printf("OpenRouter error response: %s", string(body))
+		http.Error(w, "AI service error", http.StatusInternalServerError)
+		return
+	}
 
-    body, err := ioutil.ReadAll(res.Body)
-    if err != nil {
-        w.WriteHeader(http.StatusInternalServerError)
-        response := ChatResponse{Error: "Failed to read response"}
-        json.NewEncoder(w).Encode(response)
-        return
-    }
+	var response Response
+	err = json.Unmarshal(body, &response)
+	if err != nil {
+		log.Printf("Error unmarshaling response: %v", err)
+		http.Error(w, "Error parsing response", http.StatusInternalServerError)
+		return
+	}
 
-    elapsed := time.Since(start)
+	output := map[string]interface{}{
+		"answer":  "",
+		"latency": elapsed.Seconds(),
+	}
 
-    var openRouterResponse OpenRouterResponse
-    err = json.Unmarshal(body, &openRouterResponse)
-    if err != nil {
-        log.Printf("Failed to parse OpenRouter response: %v", err)
-        w.WriteHeader(http.StatusInternalServerError)
-        response := ChatResponse{Error: "Failed to parse AI response"}
-        json.NewEncoder(w).Encode(response)
-        return
-    }
+	if len(response.Choices) > 0 {
+		output["answer"] = response.Choices[0].Message.Content
+		log.Printf("AI response: %s", response.Choices[0].Message.Content)
+	} else {
+		log.Printf("No choices in response")
+	}
 
-    if len(openRouterResponse.Choices) == 0 {
-        log.Printf("No choices in OpenRouter response")
-        w.WriteHeader(http.StatusInternalServerError)
-        response := ChatResponse{Error: "No response from AI"}
-        json.NewEncoder(w).Encode(response)
-        return
-    }
-
-    assistantMessage := openRouterResponse.Choices[0].Message.Content
-
-    // Log the AI response
-    log.Printf("AI response: %s", assistantMessage)
-
-    // Add assistant response to conversation history
-    conversationHistory = append(conversationHistory, Message{
-        Role:    "assistant",
-        Content: assistantMessage,
-    })
-
-    // Send response back to frontend
-    response := ChatResponse{
-        Response: assistantMessage,
-        Time:     elapsed.String(),
-    }
-
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(response)
-}
-
-func healthHandler(w http.ResponseWriter, r *http.Request) {
-    enableCORS(w)
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
-}
-
-func resetHandler(w http.ResponseWriter, r *http.Request) {
-    enableCORS(w)
-
-    if r.Method == "OPTIONS" {
-        w.WriteHeader(http.StatusOK)
-        return
-    }
-
-    if r.Method != "POST" {
-        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-        return
-    }
-
-    // Reset conversation history
-    conversationHistory = []Message{
-        {Role: "system", Content: "You are a helpful assistant."},
-    }
-
-    log.Printf("Conversation history reset")
-
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(map[string]string{"status": "reset"})
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(output)
 }
 
 func main() {
-    // Load .env file
-    err := godotenv.Load()
-    if err != nil {
-        fmt.Println("Warning: .env file not found, using system environment")
-    }
+	// Load .env file
+	err := godotenv.Load()
+	if err != nil {
+		log.Printf("Warning: .env file not found")
+	}
 
-    apiKey = os.Getenv("OPENROUTER_API_KEY")
-    if apiKey == "" {
-        fmt.Println("Error: Set your OPENROUTER_API_KEY in .env or as environment variable")
-        return
-    }
+	// Check if API key is set
+	apiKey := os.Getenv("OPENROUTER_API_KEY")
+	if apiKey == "" {
+		log.Fatal("OPENROUTER_API_KEY environment variable is not set")
+	}
 
-    // Setup routes with logging middleware
-    http.HandleFunc("/api/chat", loggingMiddleware(chatHandler))
-    http.HandleFunc("/api/health", loggingMiddleware(healthHandler))
-    http.HandleFunc("/api/reset", loggingMiddleware(resetHandler))
+	// Setup routes with CORS middleware
+	http.HandleFunc("/chat", corsMiddleware(chatHandler))
 
-    port := os.Getenv("PORT")
-    if port == "" {
-        port = "5001"
-    }
+	// Health check endpoint
+	http.HandleFunc("/health", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	}))
 
-    fmt.Printf("Server starting on port %s...\n", port)
-    fmt.Println("Endpoints:")
-    fmt.Println("  POST /api/chat - Send message to chatbot")
-    fmt.Println("  GET  /api/health - Health check")
-    fmt.Println("  POST /api/reset - Reset conversation")
-    fmt.Println("\n--- Server Logs ---")
+	fmt.Println("Server starting on http://localhost:8080")
+	fmt.Println("Endpoints:")
+	fmt.Println("  POST /chat - Chat with AI")
+	fmt.Println("  GET /health - Health check")
 
-    err = http.ListenAndServe(":"+port, nil)
-    if err != nil {
-        fmt.Printf("Error starting server: %v\n", err)
-    }
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }

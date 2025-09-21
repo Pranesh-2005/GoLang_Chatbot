@@ -5,12 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Go Chatbot</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        /* ...existing CSS unchanged... */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -19,206 +15,36 @@
             justify-content: center;
             align-items: center;
         }
-
-        .chat-container {
-            width: 90%;
-            max-width: 800px;
-            height: 90vh;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-
-        .chat-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            text-align: center;
-            position: relative;
-        }
-
-        .chat-header h1 {
-            margin: 0;
-            font-size: 1.5rem;
-        }
-
-        .status {
-            position: absolute;
-            top: 10px;
-            right: 20px;
-            padding: 5px 10px;
-            border-radius: 15px;
-            font-size: 0.8rem;
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-        .status.online {
-            background: #4CAF50;
-        }
-
-        .status.offline {
-            background: #f44336;
-        }
-
-        .chat-messages {
-            flex: 1;
-            padding: 20px;
-            overflow-y: auto;
-            background: #f8f9fa;
-        }
-
-        .message {
-            margin-bottom: 15px;
-            animation: fadeIn 0.3s ease-in;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .message.user {
-            text-align: right;
-        }
-
-        .message.assistant {
-            text-align: left;
-        }
-
-        .message-content {
-            display: inline-block;
-            max-width: 70%;
-            padding: 12px 16px;
-            border-radius: 20px;
-            margin: 0 10px;
-            word-wrap: break-word;
-        }
-
-        .message.user .message-content {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .message.assistant .message-content {
-            background: white;
-            color: #333;
-            border: 1px solid #e0e0e0;
-        }
-
-        .message-time {
-            font-size: 0.7rem;
-            color: #888;
-            margin: 5px 10px;
-        }
-
-        .chat-input {
-            padding: 20px;
-            border-top: 1px solid #e0e0e0;
-            background: white;
-        }
-
-        .input-container {
-            display: flex;
-            gap: 10px;
-            align-items: flex-end;
-        }
-
-        .message-input {
-            flex: 1;
-            padding: 12px 16px;
-            border: 2px solid #e0e0e0;
-            border-radius: 25px;
-            outline: none;
-            font-size: 1rem;
-            resize: none;
-            min-height: 50px;
-            max-height: 100px;
-            font-family: inherit;
-        }
-
-        .message-input:focus {
-            border-color: #667eea;
-        }
-
-        .send-button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 25px;
-            cursor: pointer;
-            font-size: 1rem;
-            transition: transform 0.2s;
-        }
-
-        .send-button:hover {
-            transform: scale(1.05);
-        }
-
-        .send-button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .reset-button {
-            background: #f44336;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            margin-left: 10px;
-        }
-
-        .reset-button:hover {
-            background: #d32f2f;
-        }
-
-        .loading {
-            display: none;
-            text-align: center;
-            padding: 10px;
-            color: #666;
-        }
-
-        .loading.show {
-            display: block;
-        }
-
-        .typing-indicator {
-            display: none;
-            padding: 10px 20px;
-            color: #666;
-            font-style: italic;
-        }
-
-        .typing-indicator.show {
-            display: block;
-        }
-
-        .error-message {
-            background: #ffebee;
-            color: #c62828;
-            padding: 10px;
-            border-radius: 5px;
-            margin: 10px;
-            border-left: 4px solid #c62828;
-        }
-
+        .chat-container { width: 90%; max-width: 800px; height: 90vh; background: white; border-radius: 15px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); display: flex; flex-direction: column; overflow: hidden; }
+        .chat-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center; position: relative; }
+        .chat-header h1 { margin: 0; font-size: 1.5rem; }
+        .status { position: absolute; top: 10px; right: 20px; padding: 5px 10px; border-radius: 15px; font-size: 0.8rem; background: rgba(255, 255, 255, 0.2); }
+        .status.online { background: #4CAF50; }
+        .status.offline { background: #f44336; }
+        .chat-messages { flex: 1; padding: 20px; overflow-y: auto; background: #f8f9fa; }
+        .message { margin-bottom: 15px; animation: fadeIn 0.3s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .message.user { text-align: right; }
+        .message.assistant { text-align: left; }
+        .message-content { display: inline-block; max-width: 70%; padding: 12px 16px; border-radius: 20px; margin: 0 10px; word-wrap: break-word; }
+        .message.user .message-content { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .message.assistant .message-content { background: white; color: #333; border: 1px solid #e0e0e0; }
+        .message-time { font-size: 0.7rem; color: #888; margin: 5px 10px; }
+        .chat-input { padding: 20px; border-top: 1px solid #e0e0e0; background: white; }
+        .input-container { display: flex; gap: 10px; align-items: flex-end; }
+        .message-input { flex: 1; padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 25px; outline: none; font-size: 1rem; resize: none; min-height: 50px; max-height: 100px; font-family: inherit; }
+        .message-input:focus { border-color: #667eea; }
+        .send-button { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px 20px; border-radius: 25px; cursor: pointer; font-size: 1rem; transition: transform 0.2s; }
+        .send-button:hover { transform: scale(1.05); }
+        .send-button:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .reset-button { background: #f44336; color: white; border: none; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-size: 0.9rem; margin-left: 10px; }
+        .reset-button:hover { background: #d32f2f; }
+        .typing-indicator { display: none; padding: 10px 20px; color: #666; font-style: italic; }
+        .typing-indicator.show { display: block; }
+        .error-message { background: #ffebee; color: #c62828; padding: 10px; border-radius: 5px; margin: 10px; border-left: 4px solid #c62828; }
         @media (max-width: 600px) {
-            .chat-container {
-                width: 95%;
-                height: 95vh;
-            }
-            
-            .message-content {
-                max-width: 85%;
-            }
+            .chat-container { width: 95%; height: 95vh; }
+            .message-content { max-width: 85%; }
         }
     </style>
 </head>
@@ -227,9 +53,8 @@
         <div class="chat-header">
             <h1>🤖 Go Chatbot</h1>
             <div class="status" id="status">Connecting...</div>
-            <button class="reset-button" onclick="resetConversation()">Reset Chat</button>
+            <button class="reset-button" onclick="resetConversation()">Clear Chat</button>
         </div>
-        
         <div class="chat-messages" id="chatMessages">
             <div class="message assistant">
                 <div class="message-content">
@@ -238,11 +63,9 @@
                 <div class="message-time">Just now</div>
             </div>
         </div>
-        
         <div class="typing-indicator" id="typingIndicator">
             AI is typing...
         </div>
-        
         <div class="chat-input">
             <div class="input-container">
                 <textarea 
@@ -259,7 +82,7 @@
     </div>
 
     <script>
-        const API_BASE_URL = 'http://localhost:5001';
+        const API_BASE_URL = 'http://localhost:8080';
         let isLoading = false;
 
         // DOM Elements
@@ -286,7 +109,7 @@
         // Check server status
         async function checkStatus() {
             try {
-                const response = await fetch(`${API_BASE_URL}/api/health`);
+                const response = await fetch(`${API_BASE_URL}/health`);
                 if (response.ok) {
                     statusElement.textContent = 'Online';
                     statusElement.className = 'status online';
@@ -303,14 +126,11 @@
         function addMessage(content, role, time = null) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${role}`;
-            
             const timeString = time || new Date().toLocaleTimeString();
-            
             messageDiv.innerHTML = `
                 <div class="message-content">${content}</div>
                 <div class="message-time">${timeString}</div>
             `;
-            
             chatMessages.appendChild(messageDiv);
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
@@ -330,53 +150,37 @@
             errorDiv.textContent = `Error: ${message}`;
             chatMessages.appendChild(errorDiv);
             chatMessages.scrollTop = chatMessages.scrollHeight;
-            
-            // Remove error after 5 seconds
-            setTimeout(() => {
-                errorDiv.remove();
-            }, 5000);
+            setTimeout(() => { errorDiv.remove(); }, 5000);
         }
 
         // Send message
         async function sendMessage() {
             const message = messageInput.value.trim();
-            
             if (!message || isLoading) return;
-            
-            // Add user message
             addMessage(message, 'user');
             messageInput.value = '';
             messageInput.style.height = 'auto';
-            
-            // Update UI
             isLoading = true;
             sendButton.disabled = true;
             sendButton.textContent = 'Sending...';
             showTyping(true);
-            
             try {
-                const response = await fetch(`${API_BASE_URL}/api/chat`, {
+                const response = await fetch(`${API_BASE_URL}/chat`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ message: message })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: message })
                 });
-                
                 const data = await response.json();
-                
-                if (data.error) {
-                    showError(data.error);
+                if (response.ok) {
+                    const timeString = `${new Date().toLocaleTimeString()} (${data.latency.toFixed(2)}s)`;
+                    addMessage(data.answer, 'assistant', timeString);
                 } else {
-                    const timeString = `${new Date().toLocaleTimeString()} (${data.time})`;
-                    addMessage(data.response, 'assistant', timeString);
+                    showError('Failed to get response from AI');
                 }
-                
             } catch (error) {
                 showError('Failed to connect to server. Please check if the backend is running.');
                 console.error('Error:', error);
             } finally {
-                // Reset UI
                 isLoading = false;
                 sendButton.disabled = false;
                 sendButton.textContent = 'Send';
@@ -385,46 +189,23 @@
             }
         }
 
-        // Reset conversation
+        // Reset conversation (clear chat locally)
         async function resetConversation() {
-            if (!confirm('Are you sure you want to reset the conversation?')) {
-                return;
-            }
-            
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/reset`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                });
-                
-                if (response.ok) {
-                    // Clear chat messages
-                    chatMessages.innerHTML = `
-                        <div class="message assistant">
-                            <div class="message-content">
-                                Hello! I'm your AI assistant. How can I help you today?
-                            </div>
-                            <div class="message-time">Just now</div>
-                        </div>
-                    `;
-                } else {
-                    showError('Failed to reset conversation');
-                }
-                
-            } catch (error) {
-                showError('Failed to connect to server');
-                console.error('Error:', error);
-            }
+            if (!confirm('Are you sure you want to clear the chat?')) return;
+            chatMessages.innerHTML = `
+                <div class="message assistant">
+                    <div class="message-content">
+                        Hello! I'm your AI assistant. How can I help you today?
+                    </div>
+                    <div class="message-time">Just now</div>
+                </div>
+            `;
         }
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             checkStatus();
             messageInput.focus();
-            
-            // Check status every 30 seconds
             setInterval(checkStatus, 30000);
         });
     </script>
