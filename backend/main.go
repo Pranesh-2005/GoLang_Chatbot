@@ -158,16 +158,19 @@ func chatHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	// Load .env file
-	err := godotenv.Load()
-	if err != nil {
-		log.Printf("Warning: .env file not found")
-	}
+	// Load .env file (optional for local dev)
+	_ = godotenv.Load()
 
 	// Check if API key is set
 	apiKey := os.Getenv("OPENROUTER_API_KEY")
 	if apiKey == "" {
 		log.Fatal("OPENROUTER_API_KEY environment variable is not set")
+	}
+
+	// Use PORT env variable for Render, default to 8080 for local
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
 	}
 
 	// Setup routes with CORS middleware
@@ -179,10 +182,10 @@ func main() {
 		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	}))
 
-	fmt.Println("Server starting on http://localhost:8080")
+	fmt.Printf("Server starting on http://0.0.0.0:%s\n", port)
 	fmt.Println("Endpoints:")
 	fmt.Println("  POST /chat - Chat with AI")
 	fmt.Println("  GET /health - Health check")
 
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
