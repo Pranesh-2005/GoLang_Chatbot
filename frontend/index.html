@@ -4,54 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Go Chatbot</title>
-    <style>
-        /* ...existing CSS unchanged... */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        .chat-container { width: 90%; max-width: 800px; height: 90vh; background: white; border-radius: 15px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); display: flex; flex-direction: column; overflow: hidden; }
-        .chat-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center; position: relative; }
-        .chat-header h1 { margin: 0; font-size: 1.5rem; }
-        .status { position: absolute; top: 10px; right: 20px; padding: 5px 10px; border-radius: 15px; font-size: 0.8rem; background: rgba(255, 255, 255, 0.2); }
-        .status.online { background: #4CAF50; }
-        .status.offline { background: #f44336; }
-        .chat-messages { flex: 1; padding: 20px; overflow-y: auto; background: #f8f9fa; }
-        .message { margin-bottom: 15px; animation: fadeIn 0.3s ease-in; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .message.user { text-align: right; }
-        .message.assistant { text-align: left; }
-        .message-content { display: inline-block; max-width: 70%; padding: 12px 16px; border-radius: 20px; margin: 0 10px; word-wrap: break-word; }
-        .message.user .message-content { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
-        .message.assistant .message-content { background: white; color: #333; border: 1px solid #e0e0e0; }
-        .message-time { font-size: 0.7rem; color: #888; margin: 5px 10px; }
-        .chat-input { padding: 20px; border-top: 1px solid #e0e0e0; background: white; }
-        .input-container { display: flex; gap: 10px; align-items: flex-end; }
-        .message-input { flex: 1; padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 25px; outline: none; font-size: 1rem; resize: none; min-height: 50px; max-height: 100px; font-family: inherit; }
-        .message-input:focus { border-color: #667eea; }
-        .send-button { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px 20px; border-radius: 25px; cursor: pointer; font-size: 1rem; transition: transform 0.2s; }
-        .send-button:hover { transform: scale(1.05); }
-        .send-button:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-        .reset-button { background: #f44336; color: white; border: none; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-size: 0.9rem; margin-left: 10px; }
-        .reset-button:hover { background: #d32f2f; }
-        .typing-indicator { display: none; padding: 10px 20px; color: #666; font-style: italic; }
-        .typing-indicator.show { display: block; }
-        .error-message { background: #ffebee; color: #c62828; padding: 10px; border-radius: 5px; margin: 10px; border-left: 4px solid #c62828; }
-        @media (max-width: 600px) {
-            .chat-container { width: 95%; height: 95vh; }
-            .message-content { max-width: 85%; }
-        }
-    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
     <div class="chat-container">
         <div class="chat-header">
-            <h1>🤖 Go Chatbot</h1>
+            <h1>Go Chatbot</h1>
             <div class="status" id="status">Connecting...</div>
             <button class="reset-button" onclick="resetConversation()">Clear Chat</button>
         </div>
@@ -69,8 +29,8 @@
         <div class="chat-input">
             <div class="input-container">
                 <textarea 
-                    id="messageInput" 
-                    class="message-input" 
+                    id="messageInput"
+                    class="message-input"
                     placeholder="Type your message here..."
                     rows="1"
                 ></textarea>
@@ -80,134 +40,6 @@
             </div>
         </div>
     </div>
-
-    <script>
-        const API_BASE_URL = 'https://gochatbotbackend.onrender.com';
-        let isLoading = false;
-
-        // DOM Elements
-        const chatMessages = document.getElementById('chatMessages');
-        const messageInput = document.getElementById('messageInput');
-        const sendButton = document.getElementById('sendButton');
-        const statusElement = document.getElementById('status');
-        const typingIndicator = document.getElementById('typingIndicator');
-
-        // Auto-resize textarea
-        messageInput.addEventListener('input', function() {
-            this.style.height = 'auto';
-            this.style.height = Math.min(this.scrollHeight, 100) + 'px';
-        });
-
-        // Send message on Enter (Shift+Enter for new line)
-        messageInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
-            }
-        });
-
-        // Check server status
-        async function checkStatus() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/health`);
-                if (response.ok) {
-                    statusElement.textContent = 'Online';
-                    statusElement.className = 'status online';
-                } else {
-                    throw new Error('Server error');
-                }
-            } catch (error) {
-                statusElement.textContent = 'Offline';
-                statusElement.className = 'status offline';
-            }
-        }
-
-        // Add message to chat
-        function addMessage(content, role, time = null) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${role}`;
-            const timeString = time || new Date().toLocaleTimeString();
-            messageDiv.innerHTML = `
-                <div class="message-content">${content}</div>
-                <div class="message-time">${timeString}</div>
-            `;
-            chatMessages.appendChild(messageDiv);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-
-        // Show/hide typing indicator
-        function showTyping(show) {
-            typingIndicator.className = show ? 'typing-indicator show' : 'typing-indicator';
-            if (show) {
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-            }
-        }
-
-        // Show error message
-        function showError(message) {
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'error-message';
-            errorDiv.textContent = `Error: ${message}`;
-            chatMessages.appendChild(errorDiv);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-            setTimeout(() => { errorDiv.remove(); }, 5000);
-        }
-
-        // Send message
-        async function sendMessage() {
-            const message = messageInput.value.trim();
-            if (!message || isLoading) return;
-            addMessage(message, 'user');
-            messageInput.value = '';
-            messageInput.style.height = 'auto';
-            isLoading = true;
-            sendButton.disabled = true;
-            sendButton.textContent = 'Sending...';
-            showTyping(true);
-            try {
-                const response = await fetch(`${API_BASE_URL}/chat`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt: message })
-                });
-                const data = await response.json();
-                if (response.ok) {
-                    const timeString = `${new Date().toLocaleTimeString()} (${data.latency.toFixed(2)}s)`;
-                    addMessage(data.answer, 'assistant', timeString);
-                } else {
-                    showError('Failed to get response from AI');
-                }
-            } catch (error) {
-                showError('Failed to connect to server. Please check if the backend is running.');
-                console.error('Error:', error);
-            } finally {
-                isLoading = false;
-                sendButton.disabled = false;
-                sendButton.textContent = 'Send';
-                showTyping(false);
-                messageInput.focus();
-            }
-        }
-
-        // Reset conversation (clear chat locally)
-        async function resetConversation() {
-            if (!confirm('Are you sure you want to clear the chat?')) return;
-            chatMessages.innerHTML = `
-                <div class="message assistant">
-                    <div class="message-content">
-                        Hello! I'm your AI assistant. How can I help you today?
-                    </div>
-                    <div class="message-time">Just now</div>
-                </div>
-            `;
-        }
-
-        // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
-            checkStatus();
-            messageInput.focus();
-            setInterval(checkStatus, 30000);
-        });
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>
