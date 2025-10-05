@@ -81,7 +81,7 @@ func chatHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	reqBody := Request{
-		Model: "x-ai/grok-4-fast:free",
+		Model: "deepseek/deepseek-chat-v3.1:free",
 		Messages: []Message{
 			{Role: "system", Content: "You are a helpful assistant."},
 			{Role: "user", Content: input.Prompt},
